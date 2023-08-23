@@ -289,9 +289,9 @@ async function updateHtmlImagesToCloudinary(html, options = {}) {
     }
 
     if (!$img.getAttribute('sizes')) errors.push({imgSrc, message: `Image ${imgSrc} did not have sizes attribute set. Image is not responsive.`});
+    if (responsiveUrls.length < 1) errors.push({message: `No responsive images were generated. Make sure you have set an upload preset with responsive breakpoints.`});
   }
 
-  if (responsiveUrls.length < 1) errors.push({message: `No responsive images were generated. Make sure you have set an upload preset with responsive breakpoints.`});
 
   return {
     html: dom.serialize(),
