@@ -156,9 +156,7 @@ async function getCloudinaryUrl(options = {}) {
     ]
   });
 
-  const responsiveWidths = breakpoints.map(({width}) => width);
-
-  const responsiveUrls = responsiveWidths.map(width => [cloudinary.url(publicId, {
+  const responsiveUrls = breakpoints.map(({width}) => [cloudinary.url(publicId, {
     type: deliveryType,
     secure: true,
     transformation: [
@@ -175,7 +173,6 @@ async function getCloudinaryUrl(options = {}) {
     sourceUrl: fileLocation,
     cloudinaryUrl,
     responsiveUrls,
-    responsiveWidths,
     publicId
   };
 }
@@ -218,7 +215,7 @@ async function updateHtmlImagesToCloudinary(html, options = {}) {
 
   for ( const $img of images ) {
     let imgSrc = $img.getAttribute('src');
-    let cloudinaryUrl;
+    let cloudinaryUrl, responsiveUrls;
 
     // Check to see if we have an existing asset already to pick from
     // Look at both the path and full URL
@@ -234,7 +231,7 @@ async function updateHtmlImagesToCloudinary(html, options = {}) {
 
     if ( !cloudinaryUrl ) {
       try {
-        const { cloudinaryUrl: url, responsiveUrls, responsiveWidths } = await getCloudinaryUrl({
+        const { cloudinaryUrl: url, responsiveUrls: rUrls } = await getCloudinaryUrl({
           deliveryType,
           folder,
           path: imgSrc,
@@ -244,6 +241,7 @@ async function updateHtmlImagesToCloudinary(html, options = {}) {
           loadingStrategy
         });
         cloudinaryUrl = url;
+        responsiveUrls = rUrls;
       } catch(e) {
         const { error } = e;
         errors.push({
