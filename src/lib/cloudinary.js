@@ -84,6 +84,7 @@ async function getCloudinaryUrl(options = {}) {
 
   let fileLocation;
   let publicId;
+  let breakpoints;
 
   if ( deliveryType === 'fetch' ) {
     // fetch allows us to pass in a remote URL to the Cloudinary API
@@ -138,9 +139,10 @@ async function getCloudinaryUrl(options = {}) {
 
     // Finally use the stored public ID to grab the image URL
 
-    const { public_id } = results;
+    const { public_id, responsive_breakpoints } = results;
     publicId = public_id;
     fileLocation = fullPath;
+    breakpoints = (responsive_breakpoints && responsive_breakpoints[0]['breakpoints']) || [];
   }
 
   const cloudinaryUrl = cloudinary.url(publicId, {
@@ -154,9 +156,26 @@ async function getCloudinaryUrl(options = {}) {
     ]
   });
 
+  const responsiveWidths = breakpoints.map(({width}) => width);
+
+  const responsiveUrls = responsiveWidths.map(width => [cloudinary.url(publicId, {
+    type: deliveryType,
+    secure: true,
+    transformation: [
+      {
+        width,
+        crop: 'scale',
+        fetch_format: 'auto',
+        quality: 'auto'
+      }
+    ]
+  }), `${width}w`].join(' '));
+
   return {
     sourceUrl: fileLocation,
     cloudinaryUrl,
+    responsiveUrls,
+    responsiveWidths,
     publicId
   };
 }
@@ -215,7 +234,7 @@ async function updateHtmlImagesToCloudinary(html, options = {}) {
 
     if ( !cloudinaryUrl ) {
       try {
-        const { cloudinaryUrl: url } = await getCloudinaryUrl({
+        const { cloudinaryUrl: url, responsiveUrls, responsiveWidths } = await getCloudinaryUrl({
           deliveryType,
           folder,
           path: imgSrc,
@@ -263,7 +282,16 @@ async function updateHtmlImagesToCloudinary(html, options = {}) {
       $img.setAttribute('srcset', srcsetUrlsCloudinaryString);
 
     }
+
+    // Attempt to generate responsive images from src image and set srcset
+    if (!srcset && !!$img.getAttribute('sizes') && responsiveUrls.length > 0) {
+      $img.setAttribute('srcset', responsiveUrls.join(','));
+    }
+
+    if (!$img.getAttribute('sizes')) errors.push({imgSrc, message: `Image ${imgSrc} did not have sizes attribute set. Image is not responsive.`});
   }
+
+  if (responsiveUrls.length < 1) errors.push({message: `No responsive images were generated. Make sure you have set an upload preset with responsive breakpoints.`});
 
   return {
     html: dom.serialize(),
